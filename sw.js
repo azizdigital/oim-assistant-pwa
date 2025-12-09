@@ -1,18 +1,18 @@
 // Service Worker for OIM Assistant PWA
-// Version 1.0
+// Version 1.1 - Fixed paths for GitHub Pages
 
 const CACHE_NAME = 'oim-assist-v1';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/styles.css',
-  '/app.js',
-  '/handwriting.js',
-  '/pwa.js',
-  '/manifest.json',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
-  '/icons/icon-180.png',
+  './',
+  './index.html',
+  './styles.css',
+  './app.js',
+  './handwriting.js',
+  './pwa.js',
+  './manifest.json',
+  './icons/icon-192.png',
+  './icons/icon-512.png',
+  './icons/icon-180.png',
   'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js',
   'https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js'
@@ -24,7 +24,12 @@ self.addEventListener('install', event => {
     caches.open(CACHE_NAME)
       .then(cache => {
         console.log('Opened cache');
-        return cache.addAll(urlsToCache.map(url => new Request(url, {cache: 'reload'})));
+        return cache.addAll(urlsToCache.map(url => {
+          if (url.startsWith('http')) {
+            return new Request(url, {cache: 'reload'});
+          }
+          return new Request(url, {cache: 'reload'});
+        }));
       })
       .catch(err => {
         console.log('Cache install error:', err);
@@ -52,10 +57,17 @@ self.addEventListener('activate', event => {
 
 // Fetch event - serve from cache, fallback to network
 self.addEventListener('fetch', event => {
-  // Skip cross-origin requests
-  if (!event.request.url.startsWith(self.location.origin) && 
-      !event.request.url.includes('cdnjs.cloudflare.com') &&
-      !event.request.url.includes('cdn.jsdelivr.net')) {
+  // Skip cross-origin requests except allowed CDNs
+  const url = new URL(event.request.url);
+  const allowedOrigins = [
+    'cdnjs.cloudflare.com',
+    'cdn.jsdelivr.net'
+  ];
+  
+  const isAllowedOrigin = allowedOrigins.some(origin => url.hostname.includes(origin));
+  const isSameOrigin = url.origin === self.location.origin;
+  
+  if (!isSameOrigin && !isAllowedOrigin) {
     return;
   }
 
@@ -92,7 +104,7 @@ self.addEventListener('fetch', event => {
         }).catch(error => {
           console.log('Fetch failed:', error);
           // Return offline page if available
-          return caches.match('/index.html');
+          return caches.match('./index.html');
         });
       })
   );
@@ -114,8 +126,8 @@ async function syncReports() {
 self.addEventListener('push', event => {
   const options = {
     body: event.data ? event.data.text() : 'New update available',
-    icon: '/icons/icon-192.png',
-    badge: '/icons/icon-180.png',
+    icon: './icons/icon-192.png',
+    badge: './icons/icon-180.png',
     vibrate: [200, 100, 200],
     tag: 'oim-notification',
     requireInteraction: false
@@ -130,6 +142,6 @@ self.addEventListener('push', event => {
 self.addEventListener('notificationclick', event => {
   event.notification.close();
   event.waitUntil(
-    clients.openWindow('/')
+    clients.openWindow('./')
   );
 });
