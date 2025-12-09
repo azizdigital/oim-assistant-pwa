@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="OIM Assist">
+    <meta name="theme-color" content="#1e293b">
+    <meta name="description" content="Complete Operations Management System for Offshore Installation Managers">
+    
+    <!-- PWA Icons -->
+    <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
+    <link rel="manifest" href="manifest.json">
+    
+    <title>OIM Assistant - Complete Operations Management System v5.1</title>
+    
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="header">
+        <div class="header-content">
+            <div class="logo-section">
+                <div class="logo-icon">🛢️</div>
+                <div>
+                    <h1>OIM Assistant</h1>
+                    <div class="logo-subtitle">Complete Operations & AI Management System v5.1</div>
+                </div>
+            </div>
+            <div class="header-info">
+                <div>🕗 <span id="currentTime">--:--</span></div>
+                <div>📅 <span id="currentDate">--</span></div>
+                <div><strong>POB:</strong> <span id="headerPOB">--</span> | <strong>Platform:</strong> <span id="headerPlatform">IbA</span></div>
+                <div><strong>Total Flowing Wells:</strong> <span id="headerTotalWells">0</span></div>
+            </div>
+        </div>
+    </div>
+
+    <nav class="nav">
+        <div class="nav-container">
+            <button class="nav-button active" onclick="switchView('daily')" id="nav-daily">📋 Daily Operations</button>
+            <button class="nav-button" onclick="switchView('data')" id="nav-data">💾 Data Management</button>
+            <button class="nav-button" onclick="switchView('history')" id="nav-history">📊 History & Reports</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div id="view-daily">
+            <div class="file-controls">
+                <button class="btn btn-primary" onclick="saveCompleteData()">💾 Save All Data</button>
+                <button class="btn btn-secondary" onclick="exportData()">📤 Export Data</button>
+            </div>
+
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('basic')" id="tab-btn-basic">Basic Info</button>
+                <button class="tab-btn" onclick="switchTab('safety')" id="tab-btn-safety">Safety & V&V</button>
+                <button class="tab-btn" onclick="switchTab('production')" id="tab-btn-production">Production</button>
+                <button class="tab-btn" onclick="switchTab('daily-activity')" id="tab-btn-daily-activity">Daily Activity</button>
+                <button class="tab-btn" onclick="switchTab('hitch-planning')" id="tab-btn-hitch-planning">🎯 Hitch Planning</button>
+                <button class="tab-btn" onclick="switchTab('performance')" id="tab-btn-performance">Performance Deck</button>
+                <button class="tab-btn" onclick="switchTab('generate')" id="tab-btn-generate">Generate Reports</button>
+            </div>
+			<!-- Basic Info Tab -->
+            <div id="tab-basic" class="tab-content active">
+                <div class="card">
+                    <h3 class="section-title">📅 Operation Details</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Operation Date</label>
+                            <input type="date" id="operationDate" class="form-control" onchange="updateHitchInfo(); loadDailyActivitiesForDate(); checkHitchCycle();">
+                        </div>
+                        <div class="form-group">
+                            <label>Platform</label>
+                            <select id="platform" class="form-control" onchange="updateHeaderInfo()">
+                                <option value="IbA">Irong Barat A (IbA)</option>
+                                <option value="IbB">Irong Barat B (IbB)</option>
+                                <option value="IbC">Irong Barat C (IbC)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Report Recipient</label>
+                            <input type="text" id="recipient" class="form-control" value="En. Azri & All">
+                        </div>
+                        <div class="form-group">
+                            <label>Hitch Status</label>
+                            <div id="hitchInfo" class="hitch-info">Loading hitch information...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 class="section-title">👥 Personnel on Board (POB)</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>PCSB Staff (include CDH)</label>
+                            <input type="number" id="pcsbStaff" class="form-control" min="0" onchange="updatePOB()" placeholder="PCSB personnel count">
+                        </div>
+                        <div class="form-group">
+                            <label>Contractor</label>
+                            <input type="number" id="contractorStaff" class="form-control" min="0" onchange="updatePOB()" placeholder="Contractor personnel count">
+                        </div>
+                        <div class="form-group">
+                            <label>Platform POB (Max: 98)</label>
+                            <input type="number" id="platformPOB" class="form-control" max="98" readonly>
+                            <div id="pobOverflowAlert" class="alert alert-danger hidden" style="margin-top: 8px;"></div>
+                        </div>
+                        <div class="form-group">
+                            <label>Total POB (Including Vessel)</label>
+                            <input type="number" id="totalPOB" class="form-control" readonly>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="vesselPresent" onchange="toggleVessel()">
+                            <label for="vesselPresent">Vessel Present</label>
+                        </div>
+                        <div id="vesselSection" class="vessel-section">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Vessel Name</label>
+                                    <input type="text" id="vesselName" class="form-control">
+                                </div>
+                                <div class="form-group">
+                                    <label>Vessel POB</label>
+                                    <input type="number" id="vesselPOB" class="form-control" onchange="updatePOB()">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="tomorrowCCB" onchange="toggleCCB()">
+                            <label for="tomorrowCCB">CCB Tomorrow</label>
+                        </div>
+                        <div id="ccbSection" class="vessel-section">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Incoming Crew</label>
+                                    <input type="number" id="incomingCrew" class="form-control" onchange="calculateTomorrowPOB()">
+                                </div>
+                                <div class="form-group">
+                                    <label>Outgoing Crew</label>
+                                    <input type="number" id="outgoingCrew" class="form-control" onchange="calculateTomorrowPOB()">
+                                </div>
+                                <div class="form-group">
+                                    <label>Tomorrow POB</label>
+                                    <input type="number" id="tomorrowPOB" class="form-control" readonly>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 class="section-title">🌊 Weather & Marine</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Weather Condition</label>
+                            <select id="weatherCondition" class="form-control">
+                                <option value="Fair">Fair</option>
+                                <option value="Good">Good</option>
+                                <option value="Poor">Poor</option>
+                                <option value="Rough">Rough</option>
+                                <option value="Stormy">Stormy</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Swell Height (m)</label>
+                            <div class="range-container">
+                                <input type="number" id="swellHeightMin" class="form-control" step="0.1" min="0" placeholder="Min" onchange="updateSwellComment()">
+                                <span>to</span>
+                                <input type="number" id="swellHeightMax" class="form-control" step="0.1" min="0" placeholder="Max" onchange="updateSwellComment()">
+                            </div>
+                            <div id="swellComment" class="comment-box hidden"></div>
+                        </div>
+                        <div class="form-group">
+                            <label>Wind Speed (knots)</label>
+                            <div class="range-container">
+                                <input type="number" id="windSpeedMin" class="form-control" step="1" min="0" placeholder="Min" onchange="updateWindComment()">
+                                <span>to</span>
+                                <input type="number" id="windSpeedMax" class="form-control" step="1" min="0" placeholder="Max" onchange="updateWindComment()">
+                            </div>
+                            <div id="windComment" class="comment-box hidden"></div>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Crew Boat Location</label>
+                            <select id="boatLocation" class="form-control" onchange="toggleBoatInputs()">
+                                <option value="">No Boat Information</option>
+                                <option value="In Vicinity">In Vicinity</option>
+                                <option value="At Semangkuk">At Semangkuk</option>
+                                <option value="At Dulang">At Dulang</option>
+                                <option value="Maintenance">Maintenance</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Sector Boat Plan</label>
+                            <select id="sectorBoatPlan" class="form-control" onchange="toggleSectorBoatInputs()">
+                                <option value="">No Sector Boat</option>
+                                <option value="Plan">Plan</option>
+                                <option value="No Plan">No Plan</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="boatInputs" class="hidden">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Boat Name</label>
+                                <input type="text" id="boatName" class="form-control" onchange="updateBoatComments()">
+                            </div>
+                            <div class="form-group">
+                                <label id="boatTimeLabel">ETA</label>
+                                <input type="datetime-local" id="boatETA" class="form-control" onchange="updateBoatComments()">
+                            </div>
+                        </div>
+                        <div id="boatComment" class="comment-box hidden"></div>
+                    </div>
+
+                    <div id="sectorBoatInputs" class="hidden">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Sector Boat Name</label>
+                                <input type="text" id="sectorBoatName" class="form-control" onchange="updateBoatComments()">
+                            </div>
+                            <div class="form-group">
+                                <label>Sector Boat ETA</label>
+                                <input type="datetime-local" id="sectorBoatETA" class="form-control" onchange="updateBoatComments()">
+                            </div>
+                        </div>
+                        <div id="sectorBoatComment" class="comment-box hidden"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Safety & V&V Tab -->
+            <div id="tab-safety" class="tab-content">
+                <div class="card">
+                    <h3 class="section-title">🛡️ Safety, Health & Environment</h3>
+                    <div class="form-group">
+                        <label>SHE Summary</label>
+                        <div id="sheSectionContainer">
+                            <textarea id="sheSection" class="form-control" rows="3" placeholder="All operations running smoothly over the past 24 hours with no safety incidents reported...">All operations running smoothly over the past 24 hours with no safety incidents reported. All personnel following established SHE procedures and no environmental concerns noted.</textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Near Miss Reports</label>
+                            <input type="number" id="nearMiss" class="form-control" min="0" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label>Incidents</label>
+                            <input type="number" id="incidents" class="form-control" min="0" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label>UAUC Reported</label>
+                            <input type="number" id="uaucReported" class="form-control" min="0" value="0">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="hasMedicalUpdate" onchange="toggleMedicalUpdate()">
+                            <label for="hasMedicalUpdate">Medical Update (Sick/Injured/Unwell Personnel)</label>
+                        </div>
+                        <div id="medicalUpdateSection" class="vessel-section">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Personnel Name</label>
+                                    <input type="text" id="medicalPersonnelName" class="form-control" placeholder="Full name of affected personnel">
+                                </div>
+                                <div class="form-group">
+                                    <label>Company</label>
+                                    <select id="medicalCompany" class="form-control" onchange="handleMedicalCompanyChange()">
+                                        <option value="">Select Company</option>
+                                        <option value="PETRONAS">PETRONAS</option>
+                                        <option value="PCSB">PCSB</option>
+                                        <option value="HMM">HMM</option>
+                                        <option value="Contractor">Contractor</option>
+                                        <option value="Others">Others</option>
+                                    </select>
+                                    <input type="text" id="medicalCompanyOther" class="form-control hidden" placeholder="Enter company name..." style="margin-top:8px;">
+                                </div>
+                                <div class="form-group">
+                                    <label>Medical Condition</label>
+                                    <input type="text" id="medicalCondition" class="form-control" placeholder="e.g., Fever, Injury, Allergic reaction">
+                                </div>
+                                <div class="form-group">
+                                    <label>Work Related</label>
+                                    <select id="medicalWorkRelated" class="form-control">
+                                        <option value="">Select</option>
+                                        <option value="Yes">Yes - Work Related</option>
+                                        <option value="No">No - Not Work Related</option>
+                                        <option value="Under Investigation">Under Investigation</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Medical Details & Action Taken</label>
+                                <textarea id="medicalUpdateDetails" class="form-control" rows="3" placeholder="Describe the medical situation, treatment provided, current status, and any follow-up actions required..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="hasSignificantEvents" onchange="toggleSignificantEvents()">
+                            <label for="hasSignificantEvents">Significant Events to Report (SHE Related)</label>
+                        </div>
+                        <div id="significantEventsSection" class="vessel-section">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Type of Event</label>
+                                    <select id="eventType" class="form-control" onchange="handleEventTypeChange()">
+                                        <option value="">Select Event Type</option>
+                                        <option value="Environmental Incident">Environmental Incident</option>
+                                        <option value="Safety Breach">Safety Breach</option>
+                                        <option value="Equipment Failure">Equipment Failure</option>
+                                        <option value="Emergency Response">Emergency Response</option>
+                                        <option value="Process Upset">Process Upset</option>
+                                        <option value="Security Issue">Security Issue</option>
+                                        <option value="Others">Others</option>
+                                    </select>
+                                    <input type="text" id="eventTypeOther" class="form-control hidden" placeholder="Enter event type..." style="margin-top:8px;">
+                                </div>
+                                <div class="form-group">
+                                    <label>When Happened</label>
+                                    <input type="datetime-local" id="eventDateTime" class="form-control">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Event Details & Actions</label>
+                                <textarea id="significantEventsDetails" class="form-control" rows="3" placeholder="Describe what happened, immediate actions taken, current status, and any follow-up required..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 class="section-title">✅ Verification & Validation (V&V)</h3>
+                    <div class="form-group">
+                        <button type="button" class="btn btn-primary" onclick="addVVEntry()">➕ Add V&V Entry</button>
+                    </div>
+                    <div id="vvEntriesContainer">
+                        <p style="color:#64748b;text-align:center;padding:20px">No V&V entries yet. Click "Add V&V" to create entries.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Production Tab -->
+            <div id="tab-production" class="tab-content">
+                <div class="card">
+                    <h3 class="section-title">⚡ Production Update</h3>
+                    <div class="production-dashboard">
+                        <div class="production-card">
+                            <div class="production-icon">🛢️</div>
+                            <div class="production-title">IbA</div>
+                            <input type="number" id="ibaHours" class="production-value" min="0" max="24" step="0.1" value="24" onchange="validateOperatingHours('iba')" style="background:transparent;border:none;color:#1e293b;text-align:center;font-size:2rem;font-weight:700;width:100%;">
+                            <div class="production-label">Production Hours</div>
+                            <div id="ibaReasonSection" class="hidden" style="margin-top:8px;">
+                                <input type="text" id="ibaReason" class="form-control" placeholder="Reason for downtime..." style="font-size:0.7rem;">
+                            </div>
+                        </div>
+
+                        <div class="production-card">
+                            <div class="production-icon">🛢️</div>
+                            <div class="production-title">IbB</div>
+                            <input type="number" id="ibbHours" class="production-value" min="0" max="24" step="0.1" value="24" onchange="validateOperatingHours('ibb')" style="background:transparent;border:none;color:#1e293b;text-align:center;font-size:2rem;font-weight:700;width:100%;">
+                            <div class="production-label">Production Hours</div>
+                            <div id="ibbReasonSection" class="hidden" style="margin-top:8px;">
+                                <input type="text" id="ibbReason" class="form-control" placeholder="Reason for downtime..." style="font-size:0.7rem;">
+                            </div>
+                        </div>
+
+                        <div class="production-card">
+                            <div class="production-icon">🛢️</div>
+                            <div class="production-title">IbC</div>
+                            <input type="number" id="ibcHours" class="production-value" min="0" max="24" step="0.1" value="24" onchange="validateOperatingHours('ibc')" style="background:transparent;border:none;color:#1e293b;text-align:center;font-size:2rem;font-weight:700;width:100%;">
+                            <div class="production-label">Production Hours</div>
+                            <div id="ibcReasonSection" class="hidden" style="margin-top:8px;">
+                                <input type="text" id="ibcReason" class="form-control" placeholder="Reason for downtime..." style="font-size:0.7rem;">
+                            </div>
+                        </div>
+
+                        <div class="production-card injection">
+                            <div class="production-icon">⚡</div>
+                            <div class="production-title">Injection Wells</div>
+                            <input type="number" id="injectionWells" class="production-value" min="0" value="0" style="background:transparent;border:none;color:#1e293b;text-align:center;font-size:2rem;font-weight:700;width:100%;">
+                            <div class="production-label">Injection Wells</div>
+                        </div>
+
+                        <div class="production-card gas-lift">
+                            <div class="production-icon">🔥</div>
+                            <div class="production-title">Gas Lift</div>
+                            <select id="gasLiftStatus" class="production-value" style="background:transparent;border:none;color:#1e293b;text-align:center;font-size:1.2rem;font-weight:700;width:100%;">
+                                <option value="Operational" style="color:black;">Operational</option>
+                                <option value="Maintenance" style="color:black;">Maintenance</option>
+                                <option value="Shutdown" style="color:black;">Shutdown</option>
+                            </select>
+                            <div class="production-label">Status</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 class="section-title">🏭 Wells Management</h3>
+                    
+                    <div class="total-wells-summary">
+                        <div class="total-wells-icon">⚡</div>
+                        <div class="total-wells-number" id="totalFlowingWells">0</div>
+                        <div class="total-wells-label">Total Flowing Wells</div>
+                    </div>
+
+                    <div class="well-management-grid">
+                        <div class="well-platform-card">
+                            <div class="well-platform-title">IbA Platform</div>
+                            <div class="well-platform-subtitle">
+                                Total Wells: <input type="number" id="ibaTotalWells" value="17" min="1" max="50" onchange="updateWellsCapacity('iba')" style="width:50px;text-align:center;border:1px solid #ccc;border-radius:4px;">
+                            </div>
+                            <div class="well-input-container">
+                                <input type="number" id="ibaFlowingWells" class="well-input" min="0" value="0" onchange="updateTotalFlowingWells()">
+                                <span style="color: #64748b;">/<span id="ibaMaxDisplay">17</span></span>
+                            </div>
+                            <div class="well-total-display">
+                                Flowing Wells: <span id="ibaWellsDisplay">0</span>
+                            </div>
+                        </div>
+
+                        <div class="well-platform-card">
+                            <div class="well-platform-title">IbB Platform</div>
+                            <div class="well-platform-subtitle">
+                                Total Wells: <input type="number" id="ibbTotalWells" value="5" min="1" max="50" onchange="updateWellsCapacity('ibb')" style="width:50px;text-align:center;border:1px solid #ccc;border-radius:4px;">
+                            </div>
+                            <div class="well-input-container">
+                                <input type="number" id="ibbFlowingWells" class="well-input" min="0" value="0" onchange="updateTotalFlowingWells()">
+                                <span style="color: #64748b;">/<span id="ibbMaxDisplay">5</span></span>
+                            </div>
+                            <div class="well-total-display">
+                                Flowing Wells: <span id="ibbWellsDisplay">0</span>
+                            </div>
+                        </div>
+
+                        <div class="well-platform-card">
+                            <div class="well-platform-title">IbC Platform</div>
+                            <div class="well-platform-subtitle">
+                                Total Wells: <input type="number" id="ibcTotalWells" value="6" min="1" max="50" onchange="updateWellsCapacity('ibc')" style="width:50px;text-align:center;border:1px solid #ccc;border-radius:4px;">
+                            </div>
+                            <div class="well-input-container">
+                                <input type="number" id="ibcFlowingWells" class="well-input" min="0" value="0" onchange="updateTotalFlowingWells()">
+                                <span style="color: #64748b;">/<span id="ibcMaxDisplay">6</span></span>
+                            </div>
+                            <div class="well-total-display">
+                                Flowing Wells: <span id="ibcWellsDisplay">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+	<div class="production-detail-grid">
+                    <div class="production-detail-card">
+                        <div class="detail-header">Oil Production</div>
+                        <div class="vs-container">
+                            <input type="number" id="oilActual" class="form-control vs-input" step="0.1" onchange="updateProductionComments(); updateOilConversion();" placeholder="Actual">
+                            <span class="vs-label">vs</span>
+                            <input type="number" id="oilTarget" class="form-control vs-input" step="0.1" onchange="updateProductionComments(); updateOilConversion();" placeholder="Target">
+                        </div>
+                        <div style="text-align:center;color:#64748b;font-size:0.8rem;margin-top:4px;">KL/D</div>
+                        <div id="oilConversionDisplay" class="comment-box hidden" style="margin-top:8px;text-align:center;"></div>
+                        <div id="productionLossReason" class="form-group hidden" style="margin-top:12px;">
+                            <label>Production Loss Reason</label>
+                            <textarea id="productionLossDetails" class="form-control" rows="2" placeholder="Explain why production target was not met..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="production-detail-card">
+                        <div class="detail-header">Gas Injection</div>
+                        <div class="vs-container">
+                            <input type="number" id="gasActual" class="form-control vs-input" step="0.1" onchange="updateProductionComments()" placeholder="Actual">
+                            <span class="vs-label">vs</span>
+                            <input type="number" id="gasTarget" class="form-control vs-input" step="0.1" onchange="updateProductionComments()" placeholder="Target">
+                        </div>
+                        <div style="text-align:center;color:#64748b;font-size:0.8rem;margin-top:4px;">MMSCF/D</div>
+                        <div id="gasLossReason" class="form-group hidden" style="margin-top:12px;">
+                            <label>Gas Injection Loss Reason</label>
+                            <textarea id="gasLossDetails" class="form-control" rows="2" placeholder="Explain why gas injection target was not met..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="production-detail-card">
+                        <div class="detail-header">Flare</div>
+                        <div class="vs-container">
+                            <input type="number" id="flareActual" class="form-control vs-input" step="0.1" onchange="updateProductionComments()" placeholder="Actual">
+                            <span class="vs-label">vs</span>
+                            <input type="number" id="flareTarget" class="form-control vs-input" step="0.1" onchange="updateProductionComments()" placeholder="Target">
+                        </div>
+                        <div style="text-align:center;color:#64748b;font-size:0.8rem;margin-top:4px;">MMCFD</div>
+                        <div id="flareExceedReason" class="form-group hidden" style="margin-top:12px;">
+                            <label>Flare Exceed Reason</label>
+                            <textarea id="flareExceedDetails" class="form-control" rows="2" placeholder="Explain why flare exceeded target..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="production-detail-card">
+                        <div class="detail-header">Watercut (BS&W)</div>
+                        <div class="watercut-container">
+                            <input type="number" id="watercut" class="form-control watercut-input" step="0.01" min="0" max="100" onchange="updateWatercutColor()" placeholder="0.00">
+                            <span class="watercut-percent">%</span>
+                        </div>
+                        <div id="watercutComment" class="comment-box hidden" style="margin-top:12px;"></div>
+                        <div id="watercutExceedReason" class="form-group hidden" style="margin-top:12px;">
+                            <label>Watercut Exceed Reason</label>
+                            <textarea id="watercutExceedDetails" class="form-control" rows="2" placeholder="Explain why watercut exceeded 10% limit..."></textarea>
+                        </div>
+                        <div id="watercutPlan" class="alert alert-warning hidden" style="margin-top: 8px;">
+                            High watercut detected. Water management plan may be required.
+                        </div>
+                    </div>
+                </div>
+
+                <div id="productionComments" class="comment-box hidden"></div>
+
+                <div class="card">
+                    <h3 class="section-title">📝 Operations Summary</h3>
+                    <div class="form-group">
+                        <label>Operations Highlight</label>
+                        <div id="operationsHighlightContainer">
+                            <textarea id="operationsHighlight" class="form-control" rows="4" placeholder="- All production systems operating within normal parameters...">- All production systems operating within normal parameters
+- No equipment issues reported in the past 24 hours  
+- All scheduled maintenance completed as planned
+- Process optimization measures implemented successfully</textarea>
+                    </div>
+                        </div>
+                    
+                    <div class="form-group">
+                        <label>Key Challenge</label>
+                        <div id="keyChallengContainer">
+                            <textarea id="keyChallenge" class="form-control" rows="4" placeholder="- All operations running smoothly with no significant challenges...">- All operations running smoothly with no significant challenges
+- Weather conditions favorable for all planned activities
+- Supply chain and logistics operating within schedule
+- No technical or operational impediments encountered</textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Brief Summary</label>
+                        <div id="briefSummaryContainer">
+                            <textarea id="briefSummary" class="form-control" rows="3" placeholder="All operations, logistics, and safety systems...">All operations, logistics, and safety systems have been running smoothly with no incidents reported in the past 24 hours. Production targets achieved successfully with all systems operating within normal parameters.</textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Daily Activity Tab -->
+            <div id="tab-daily-activity" class="tab-content">
+                <div class="card">
+                    <h3 class="section-title">📋 Daily Activity Report</h3>
+                    <p style="color: #64748b; margin-bottom: 20px;">
+                        Report daily activities by work group for <strong id="dailyActivityDate">--</strong>
+                    </p>
+                    
+                    <div class="add-group-container">
+                        <input type="text" id="newGroupName" class="form-control add-group-input" placeholder="Enter new group name (e.g., Wellwork, HIT Team)...">
+                        <button class="btn btn-primary" onclick="addDailyActivityGroup()">➕ Add Group</button>
+                        <button class="btn btn-success" onclick="saveDailyActivities()">💾 Save All</button>
+                    </div>
+
+                    <div class="daily-activity-grid" id="dailyActivityContainer">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hitch Planning Tab -->
+            <div id="tab-hitch-planning" class="tab-content">
+                <div class="hitch-status-banner">
+                    <div class="hitch-status-title" id="hitchPlanningStatusTitle">Loading Hitch Status...</div>
+                    <div class="hitch-status-subtitle" id="hitchPlanningStatusSubtitle">Calculating current hitch cycle...</div>
+                </div>
+
+                <div id="hitchOffDutyWarning" class="hitch-off-duty-warning hidden">
+                    ⚠️ You are currently OFF DUTY. Cannot add new objectives or focus areas during off-duty period.
+                </div>
+
+                <div class="card">
+                    <h3 class="section-title">🎯 Hitch Objectives</h3>
+                    <div style="display: flex; gap: 12px; margin-bottom: 20px;">
+                        <button class="btn btn-primary" onclick="addHitchObjective()" id="addObjectiveBtn">➕ Add Objective</button>
+                        <button class="btn btn-success" onclick="saveHitchPlanning()">💾 Save All</button>
+                    </div>
+                    <div id="hitchObjectivesContainer">
+                        <p style="color:#64748b;text-align:center;padding:40px">No hitch objectives yet. Click "Add Objective" to create your first objective.</p>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 class="section-title">🔍 Focus Areas</h3>
+                    <div style="display: flex; gap: 12px; margin-bottom: 20px;">
+                        <button class="btn btn-primary" onclick="addFocusArea()" id="addFocusAreaBtn">➕ Add Focus Area</button>
+                    </div>
+                    <div id="focusAreasContainer">
+                        <p style="color:#64748b;text-align:center;padding:40px">No focus areas yet. Click "Add Focus Area" to create your first focus area.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Performance Deck Tab -->
+            <div id="tab-performance" class="tab-content">
+                <div class="card">
+                    <h3 class="section-title">📊 Performance Deck Management</h3>
+                    
+                    <div class="file-import-card">
+                        <h4 style="margin-bottom: 12px; color: #1e40af;">📥 Import Performance Items from File</h4>
+                        <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 16px;">
+                            Import performance items from Excel (.xlsx) or CSV files. The system will auto-detect columns.
+                        </p>
+                        
+                        <div class="file-import-controls">
+                            <label class="btn btn-info" style="cursor: pointer;">
+                                📊 Import Excel File
+                                <input type="file" accept=".xlsx,.xls" onchange="importPerformanceFromExcel(event)" style="display: none;">
+                            </label>
+                            <label class="btn btn-warning" style="cursor: pointer;">
+                                📄 Import CSV File
+                                <input type="file" accept=".csv" onchange="importPerformanceFromCSV(event)" style="display: none;">
+                            </label>
+                            <button class="btn btn-secondary" onclick="showImportGuide()">❓ Import Guide</button>
+                            <button class="btn btn-info" onclick="toggleDebugMode()" id="debugToggle">🔧 Debug Mode</button>
+                            <button class="btn btn-champion" onclick="openTodaysChampion()" title="Today's Champion!">
+                                🏆 TODAY'S CHAMPION! 🎉
+                            </button>
+                        </div>
+                        
+                        <div id="importStatus" class="file-import-status hidden"></div>
+                        <div id="importPreview" class="file-preview hidden"></div>
+                    </div>
+
+                    <div id="importGuideModal" class="hidden" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center;">
+                        <div style="background:white;padding:24px;border-radius:12px;max-width:600px;margin:20px;">
+                            <h3 style="margin-bottom:16px;color:#1e40af;">📋 Import Guide</h3>
+                            <div style="color:#64748b;line-height:1.6;">
+                                <p><strong>Expected Columns (auto-detected):</strong></p>
+                                <ul style="margin:12px 0;padding-left:20px;">
+                                    <li><strong>Description/Task/Activity:</strong> Work description (REQUIRED)</li>
+                                    <li><strong>Work Group/Team/Department:</strong> Work group name</li>
+                                    <li><strong>Priority:</strong> High, Medium, or Low</li>
+                                    <li><strong>Progress/Completion/Status:</strong> Progress percentage (0-100)</li>
+                                    <li><strong>Start Date:</strong> When work should start (optional)</li>
+                                    <li><strong>End Date/Due Date:</strong> When work should be completed (optional)</li>
+                                </ul>
+                                <p><strong>Tips:</strong></p>
+                                <ul style="margin:12px 0;padding-left:20px;">
+                                    <li>Column names are flexible - system will auto-detect</li>
+                                    <li>Progress can be percentage (50%) or decimal (0.5) or number (50)</li>
+                                    <li><strong>Excel Dates:</strong> System auto-converts Excel serial numbers</li>
+                                    <li>Dates can be: YYYY-MM-DD, DD/MM/YYYY, MM/DD/YYYY, or Excel numbers</li>
+                                    <li><strong>Date Range:</strong> Only accepts dates between 1970-2050</li>
+                                    <li>Missing data will use default values</li>
+                                    <li>New work groups will be added automatically</li>
+                                </ul>
+                            </div>
+                            <button class="btn btn-primary" onclick="hideImportGuide()" style="margin-top:16px;">Got it!</button>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
+                        <button class="btn btn-primary" onclick="addNewPerformanceItem()">➕ Add New Item</button>
+                        <button class="btn btn-success" onclick="savePerformanceDeck()">💾 Save Items</button>
+                        <button class="btn btn-secondary" onclick="resetPerformanceDeck()">🔄 Reset All</button>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Filter by Work Group</label>
+                            <div style="display: flex; gap: 8px; align-items: end;">
+                                <select id="performanceGroupFilter" class="form-control" onchange="filterPerformanceItems()" style="flex: 1;">
+                                    <option value="">All Groups</option>
+                                </select>
+                                <input type="text" id="newPerformanceGroupFilter" class="form-control" placeholder="or type new group..." style="flex: 1;" onkeyup="handleNewPerformanceGroupFilter(event)">
+                                <button class="btn btn-primary" onclick="addNewPerformanceGroup()" style="padding: 10px 12px;">➕</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Search Items</label>
+                            <input type="text" id="performanceSearch" class="form-control" placeholder="Search by description..." onkeyup="filterPerformanceItems()">
+                        </div>
+                        <div class="form-group">
+                            <label>Filter by Status</label>
+                            <div class="multiselect-container">
+                                <div class="multiselect-display" onclick="toggleMultiselect()" tabindex="0">
+                                    <span id="statusFilterDisplay">All Status</span>
+                                    <span class="multiselect-arrow">▼</span>
+                                </div>
+                                <div class="multiselect-dropdown" id="statusFilterDropdown">
+                                    <div class="multiselect-option">
+                                        <input type="checkbox" id="status-all" value="" onchange="handleStatusFilterChange()">
+                                        <label for="status-all">All Status</label>
+                                    </div>
+                                    <div class="multiselect-option">
+                                        <input type="checkbox" id="status-not-started" value="Not Started" onchange="handleStatusFilterChange()">
+                                        <label for="status-not-started">Not Started</label>
+                                    </div>
+                                    <div class="multiselect-option">
+                                        <input type="checkbox" id="status-in-progress" value="In Progress" onchange="handleStatusFilterChange()">
+                                        <label for="status-in-progress">In Progress</label>
+                                    </div>
+                                    <div class="multiselect-option">
+                                        <input type="checkbox" id="status-completed" value="Completed" onchange="handleStatusFilterChange()">
+                                        <label for="status-completed">Completed</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Description</th>
+                                    <th>Progress</th>
+                                    <th>Status</th>
+                                    <th>Priority</th>
+                                    <th>Work Group</th>
+                                    <th>Start Date</th>
+                                    <th>End Date</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="performanceTableBody">
+                                <tr>
+                                    <td colspan="8" style="text-align: center; padding: 3rem; color: #64748b;">
+                                        No performance items found. Use "Add New" to create items or import from Excel/CSV files.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Generate Reports Tab -->
+            <div id="tab-generate" class="tab-content">
+                <div class="card" style="text-align: center; margin-bottom: 24px;">
+                    <h3 class="section-title" style="justify-content: center;">📊 Generate Daily Reports</h3>
+                    <p style="color: #64748b; margin-bottom: 24px;">Generate WhatsApp and Full reports separately. Only Full reports are saved to history.</p>
+                </div>
+
+                <div class="generate-grid">
+                    <div class="card report-section">
+                        <h3 class="section-title">📱 WhatsApp Daily Report</h3>
+                        
+                        <div class="form-group">
+                            <label>WhatsApp Report Preview</label>
+                            <textarea id="whatsappSummary" class="form-control report-textarea" readonly placeholder="Click 'Generate WhatsApp' to create summary..."></textarea>
+                        </div>
+                        
+                        <div style="display: flex; gap: 1rem;">
+                            <button class="btn btn-primary" onclick="generateWhatsAppReport()" style="flex:1;">🔄 Generate WhatsApp</button>
+                            <button class="btn btn-secondary" onclick="copyToClipboard()" style="flex:1;">📋 Copy</button>
+                        </div>
+                        
+                        <div style="display: flex; gap: 0.5rem; margin-top: 8px;">
+                            <button class="btn btn-info" onclick="showAIReportHelperFromButton()" style="flex:1; font-size: 0.8rem; padding: 6px 12px;">🤖 AI Helper</button>
+                        </div>
+                    </div>
+
+                    <div class="card report-section">
+                        <h3 class="section-title">📋 Full Comprehensive Report</h3>
+                        
+                        <div class="form-group">
+                            <label>Full Report Preview</label>
+                            <textarea id="fullReportPreview" class="form-control report-textarea" readonly placeholder="Click 'Generate Full Report' to see preview..."></textarea>
+                        </div>
+                        
+                        <div style="display: flex; gap: 1rem;">
+                            <button class="btn btn-success" onclick="generateFullReport()" style="flex:1;">🔄 Generate Full Report</button>
+                            <button class="btn btn-secondary" onclick="copyFullReport()" style="flex:1;">📋 Copy</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Management View -->
+        <div id="view-data" class="hidden">
+            <div class="card">
+                <h3 class="section-title">💾 Data Management</h3>
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Export Complete Data</label>
+                        <button class="btn btn-primary" onclick="exportData()" style="width: 100%;">📤 Export All Data</button>
+                        <small style="color: #64748b; display: block; margin-top: 8px;">
+                            Exports all data with date-based filename
+                        </small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Import Data</label>
+                        <label class="btn btn-success" style="width: 100%; margin: 0; cursor: pointer; text-align: center;">
+                            📥 Import Data
+                            <input type="file" accept=".json" onchange="importData(event)" style="display: none;">
+                        </label>
+                        <small style="color: #64748b; display: block; margin-top: 8px;">
+                            Accepts any .json file and supports merge/replace options
+                        </small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Reset System</label>
+                        <button class="btn btn-danger" onclick="resetAll()" style="width: 100%;">🔄 Reset All Data</button>
+                        <small style="color: #ef4444; display: block; margin-top: 8px;">
+                            Warning: This will delete all reports and settings
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 class="section-title">📊 System Information</h3>
+                <div style="background: #f8fafc; padding: 16px; border-radius: 8px; font-family: monospace; font-size: 0.85rem;">
+                    <div><strong>Application:</strong> OIM Assistant - Complete Operations Management System</div>
+                    <div><strong>Version:</strong> 5.1 - Hitch Planning + Performance Deck + Daily Activity</div>
+                    <div><strong>Platform:</strong> Irong Barat Operations</div>
+                    <div><strong>Features:</strong> Daily Reports, Wells Management, Daily Activity, Hitch Planning, Performance Deck, History Tracking, V&V System, Medical Updates, Excel/CSV Import, AI Report Helper</div>
+                    <div><strong>Data Storage:</strong> Complete JSON Export/Import + File Import</div>
+                    <div><strong>Last Updated:</strong> <span id="lastUpdateTime">--</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History & Reports View -->
+        <div id="view-history" class="hidden">
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchHistoryTab('whatsapp')" id="history-tab-btn-whatsapp">📱 WhatsApp Reports</button>
+                <button class="tab-btn" onclick="switchHistoryTab('full')" id="history-tab-btn-full">📋 Full Reports</button>
+            </div>
+
+            <div id="history-tab-whatsapp" class="tab-content active">
+                <div id="whatsappHistoryContent">
+                    <div class="card">
+                        <div style="text-align:center;padding:40px">
+                            <h3 style="color:#64748b">📱 No WhatsApp Reports Yet</h3>
+                            <p style="color:#94a3b8">Generate WhatsApp reports to see them here</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="history-tab-full" class="tab-content">
+                <div id="fullHistoryContent">
+                    <div class="card">
+                        <div style="text-align:center;padding:40px">
+                            <h3 style="color:#64748b">📋 No Full Reports Yet</h3>
+                            <p style="color:#94a3b8">Generate full reports to see them here</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI REPORT HELPER MODAL -->
+    <div class="ai-modal" id="aiReportHelperModal">
+        <div class="ai-modal-content">
+            <div class="ai-modal-header">
+                <h2>🤖 AI Report Helper</h2>
+                <button class="ai-close-btn" onclick="closeAIReportHelper()">&times;</button>
+                <p style="margin-top: 8px; font-size: 0.9rem; color: #64748b;">Choose an AI function to refine your report</p>
+            </div>
+            <div class="ai-modal-body">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px;">
+                    <button class="ai-function-btn" onclick="selectAIFunction('refine')" id="ai-btn-refine">
+                        <strong>📝 Refine Report</strong>
+                        <small>Professional OIM tone</small>
+                    </button>
+                    <button class="ai-function-btn" onclick="selectAIFunction('summary')" id="ai-btn-summary">
+                        <strong>📄 Summary Paragraph</strong>
+                        <small>Max 90 words</small>
+                    </button>
+                    <button class="ai-function-btn" onclick="selectAIFunction('challenges')" id="ai-btn-challenges">
+                        <strong>⚠️ 3 Key Challenges</strong>
+                        <small>Structured points</small>
+                    </button>
+                </div>
+
+                <div id="aiSelectedFunction" style="display: none;">
+                    <h3 id="aiFunctionTitle" style="color: #1e40af; margin-bottom: 12px;"></h3>
+                    <p id="aiFunctionDesc" style="color: #64748b; font-size: 0.9rem; margin-bottom: 16px;"></p>
+                    
+                    <div class="ai-form-group">
+                        <label>Your Report Data (editable):</label>
+                        <textarea id="aiReportData" rows="8" style="font-family: monospace; font-size: 0.85rem;"></textarea>
+                    </div>
+
+                    <button class="ai-generate-btn" onclick="generateAIReportPrompt()">
+                        🔄 Generate AI Prompt
+                    </button>
+
+                    <div id="aiReportResult" style="display: none;">
+                        <div class="ai-result-area">
+                            <div class="ai-result-header">
+                                <h4>Generated Prompt:</h4>
+                                <button class="ai-copy-btn" onclick="copyAIReportPrompt()">📋 Copy</button>
+                            </div>
+                            <div class="ai-result-text" id="aiReportPromptText"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CUSTOM PROMPT MODAL FOR ELECTRON -->
+    <div class="custom-prompt-modal" id="customPromptModal">
+        <div class="custom-prompt-content">
+            <h3 class="custom-prompt-title" id="promptTitle">
+                <span>📝</span>
+                <span id="promptTitleText">Enter Value</span>
+            </h3>
+            <input 
+                type="text" 
+                id="promptInput" 
+                class="custom-prompt-input" 
+                placeholder="Type here..."
+                autocomplete="off"
+            >
+            <div class="custom-prompt-buttons">
+                <button class="custom-prompt-btn-ok" onclick="confirmCustomPrompt()">
+                    ✅ OK
+                </button>
+                <button class="custom-prompt-btn-cancel" onclick="cancelCustomPrompt()">
+                    ❌ Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Install Prompt -->
+    <div id="installPrompt" class="install-prompt">
+        <div class="install-content">
+            <div class="install-icon">📱</div>
+            <div class="install-text">
+                <h3>Install OIM Assistant</h3>
+                <p>Add to home screen for offline access</p>
+            </div>
+        </div>
+        <div class="install-actions">
+            <button class="btn btn-primary" onclick="installPWA()">Install</button>
+            <button class="btn btn-secondary" onclick="dismissInstall()">Later</button>
+        </div>
+    </div>
+
+    <!-- External Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+    
+    <!-- App Scripts -->
+    <script src="app.js"></script>
+    <script src="handwriting.js"></script>
+    <script src="pwa.js"></script>
+</body>
+</html>

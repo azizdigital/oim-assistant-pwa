@@ -1,0 +1,36 @@
+# Development files
+*.log
+*.tmp
+temp_*
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Backup files
+*.backup
+*.bak
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+env/
+venv/
+
+# Node modules (if added later)
+node_modules/
+package-lock.json
+
+# Build files (if added later)
+dist/
+build/
+
+# OS files
+.DS_Store
+desktop.ini
